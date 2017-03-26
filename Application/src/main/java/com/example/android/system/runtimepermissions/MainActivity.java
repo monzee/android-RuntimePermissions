@@ -16,19 +16,10 @@
 
 package com.example.android.system.runtimepermissions;
 
-import com.example.android.common.logger.Log;
-import com.example.android.common.logger.LogFragment;
-import com.example.android.common.logger.LogWrapper;
-import com.example.android.common.logger.MessageOnlyLogFilter;
-import com.example.android.system.runtimepermissions.camera.CameraPreviewFragment;
-import com.example.android.system.runtimepermissions.contacts.ContactsFragment;
-
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentTransaction;
@@ -37,7 +28,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ViewAnimator;
 
+import com.example.android.common.logger.Log;
+import com.example.android.common.logger.LogFragment;
+import com.example.android.common.logger.LogWrapper;
+import com.example.android.common.logger.MessageOnlyLogFilter;
+import com.example.android.system.runtimepermissions.camera.CameraPreviewFragment;
+import com.example.android.system.runtimepermissions.contacts.ContactsFragment;
+
+import java.io.IOException;
+
 import common.activities.SampleActivityBase;
+import ph.codeia.androidutils.AndroidPermit;
 
 /**
  * Launcher Activity that demonstrates the use of runtime permissions for Android M.
@@ -86,16 +87,6 @@ public class MainActivity extends SampleActivityBase
     public static final String TAG = "MainActivity";
 
     /**
-     * Id to identify a camera permission request.
-     */
-    private static final int REQUEST_CAMERA = 0;
-
-    /**
-     * Id to identify a contacts permission request.
-     */
-    private static final int REQUEST_CONTACTS = 1;
-
-    /**
      * Permissions required to read and write contacts. Used by the {@link ContactsFragment}.
      */
     private static String[] PERMISSIONS_CONTACT = {Manifest.permission.READ_CONTACTS,
@@ -115,59 +106,28 @@ public class MainActivity extends SampleActivityBase
      */
     public void showCamera(View view) {
         Log.i(TAG, "Show camera button pressed. Checking permission.");
-        // BEGIN_INCLUDE(camera_permission)
-        // Check if the Camera permission is already available.
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
-            // Camera permission has not been granted.
-
-            requestCameraPermission();
-
-        } else {
-
-            // Camera permissions is already available, show the camera preview.
-            Log.i(TAG,
-                    "CAMERA permission has already been granted. Displaying camera preview.");
-            showCameraPreview();
-        }
-        // END_INCLUDE(camera_permission)
-
-    }
-
-    /**
-     * Requests the Camera permission.
-     * If the permission has been denied previously, a SnackBar will prompt the user to grant the
-     * permission, otherwise it is requested directly.
-     */
-    private void requestCameraPermission() {
-        Log.i(TAG, "CAMERA permission has NOT been granted. Requesting permission.");
-
-        // BEGIN_INCLUDE(camera_permission_request)
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.CAMERA)) {
-            // Provide an additional rationale to the user if the permission was not granted
-            // and the user would benefit from additional context for the use of the permission.
-            // For example if the user has previously denied the permission.
-            Log.i(TAG,
-                    "Displaying camera permission rationale to provide additional context.");
-            Snackbar.make(mLayout, R.string.permission_camera_rationale,
-                    Snackbar.LENGTH_INDEFINITE)
-                    .setAction(R.string.ok, new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            ActivityCompat.requestPermissions(MainActivity.this,
-                                    new String[]{Manifest.permission.CAMERA},
-                                    REQUEST_CAMERA);
-                        }
-                    })
-                    .show();
-        } else {
-
-            // Camera permission has not been granted yet. Request it directly.
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CAMERA);
-        }
-        // END_INCLUDE(camera_permission_request)
+        AndroidPermit.of(this)
+                .ask(Manifest.permission.CAMERA)
+                .denied(appeal -> {
+                    if (!appeal.isEmpty()) {
+                        Log.i(TAG,
+                                "Displaying camera permission rationale to provide additional context.");
+                        Snackbar.make(mLayout, R.string.permission_camera_rationale,
+                                Snackbar.LENGTH_INDEFINITE)
+                                .setAction(R.string.ok, _v -> appeal.submit())
+                                .show();
+                    } else {
+                        Log.i(TAG, "CAMERA permission was NOT granted.");
+                        Snackbar.make(mLayout, R.string.permissions_not_granted,
+                                Snackbar.LENGTH_SHORT).show();
+                    }
+                })
+                .granted(() -> {
+                    Log.i(TAG,
+                            "CAMERA permission has already been granted. Displaying camera preview.");
+                    showCameraPreview();
+                })
+                .submit();
     }
 
     /**
@@ -177,61 +137,30 @@ public class MainActivity extends SampleActivityBase
     public void showContacts(View v) {
         Log.i(TAG, "Show contacts button pressed. Checking permissions.");
 
-        // Verify that all required contact permissions have been granted.
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
-                != PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_CONTACTS)
-                != PackageManager.PERMISSION_GRANTED) {
-            // Contacts permissions have not been granted.
-            Log.i(TAG, "Contact permissions has NOT been granted. Requesting permissions.");
-            requestContactsPermissions();
-
-        } else {
-
-            // Contact permissions have been granted. Show the contacts fragment.
-            Log.i(TAG,
-                    "Contact permissions have already been granted. Displaying contact details.");
-            showContactDetails();
-        }
+        AndroidPermit.of(this)
+                .ask(PERMISSIONS_CONTACT)
+                .denied(appeal -> {
+                    if (!appeal.isEmpty()) {
+                        Log.i(TAG,
+                                "Displaying contacts permission rationale to provide additional context.");
+                        Snackbar.make(mLayout, R.string.permission_contacts_rationale,
+                                Snackbar.LENGTH_INDEFINITE)
+                                .setAction(R.string.ok, _v -> appeal.submit())
+                                .show();
+                    } else {
+                        Log.i(TAG, "Contacts permissions were NOT granted.");
+                        Snackbar.make(mLayout, R.string.permissions_not_granted,
+                                Snackbar.LENGTH_SHORT)
+                                .show();
+                    }
+                })
+                .granted(() -> {
+                    Log.i(TAG,
+                            "Contact permissions have already been granted. Displaying contact details.");
+                    showContactDetails();
+                })
+                .submit();
     }
-
-    /**
-     * Requests the Contacts permissions.
-     * If the permission has been denied previously, a SnackBar will prompt the user to grant the
-     * permission, otherwise it is requested directly.
-     */
-    private void requestContactsPermissions() {
-        // BEGIN_INCLUDE(contacts_permission_request)
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.READ_CONTACTS)
-                || ActivityCompat.shouldShowRequestPermissionRationale(this,
-                Manifest.permission.WRITE_CONTACTS)) {
-
-            // Provide an additional rationale to the user if the permission was not granted
-            // and the user would benefit from additional context for the use of the permission.
-            // For example, if the request has been denied previously.
-            Log.i(TAG,
-                    "Displaying contacts permission rationale to provide additional context.");
-
-            // Display a SnackBar with an explanation and a button to trigger the request.
-            Snackbar.make(mLayout, R.string.permission_contacts_rationale,
-                    Snackbar.LENGTH_INDEFINITE)
-                    .setAction(R.string.ok, new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            ActivityCompat
-                                    .requestPermissions(MainActivity.this, PERMISSIONS_CONTACT,
-                                            REQUEST_CONTACTS);
-                        }
-                    })
-                    .show();
-        } else {
-            // Contact permissions have not been granted yet. Request them directly.
-            ActivityCompat.requestPermissions(this, PERMISSIONS_CONTACT, REQUEST_CONTACTS);
-        }
-        // END_INCLUDE(contacts_permission_request)
-    }
-
 
     /**
      * Display the {@link CameraPreviewFragment} in the content area if the required Camera
@@ -240,7 +169,7 @@ public class MainActivity extends SampleActivityBase
     private void showCameraPreview() {
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.sample_content_fragment, CameraPreviewFragment.newInstance())
-                .addToBackStack("contacts")
+                .addToBackStack("camera")
                 .commit();
     }
 
@@ -256,54 +185,6 @@ public class MainActivity extends SampleActivityBase
                 .commit();
     }
 
-
-    /**
-     * Callback received when a permissions request has been completed.
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-            @NonNull int[] grantResults) {
-
-        if (requestCode == REQUEST_CAMERA) {
-            // BEGIN_INCLUDE(permission_result)
-            // Received permission result for camera permission.
-            Log.i(TAG, "Received response for Camera permission request.");
-
-            // Check if the only required permission has been granted
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Camera permission has been granted, preview can be displayed
-                Log.i(TAG, "CAMERA permission has now been granted. Showing preview.");
-                Snackbar.make(mLayout, R.string.permision_available_camera,
-                        Snackbar.LENGTH_SHORT).show();
-            } else {
-                Log.i(TAG, "CAMERA permission was NOT granted.");
-                Snackbar.make(mLayout, R.string.permissions_not_granted,
-                        Snackbar.LENGTH_SHORT).show();
-
-            }
-            // END_INCLUDE(permission_result)
-
-        } else if (requestCode == REQUEST_CONTACTS) {
-            Log.i(TAG, "Received response for contact permissions request.");
-
-            // We have requested multiple permissions for contacts, so all of them need to be
-            // checked.
-            if (PermissionUtil.verifyPermissions(grantResults)) {
-                // All required permissions have been granted, display contacts fragment.
-                Snackbar.make(mLayout, R.string.permision_available_contacts,
-                        Snackbar.LENGTH_SHORT)
-                        .show();
-            } else {
-                Log.i(TAG, "Contacts permissions were NOT granted.");
-                Snackbar.make(mLayout, R.string.permissions_not_granted,
-                        Snackbar.LENGTH_SHORT)
-                        .show();
-            }
-
-        } else {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        }
-    }
 
     /* Note: Methods and definitions below are only used to provide the UI for this sample and are
     not relevant for the execution of the runtime permissions API. */
@@ -336,6 +217,14 @@ public class MainActivity extends SampleActivityBase
                     output.setDisplayedChild(0);
                 }
                 supportInvalidateOptionsMenu();
+                return true;
+            case R.id.reset_permissions:
+                try {
+                    Runtime.getRuntime()
+                            .exec("pm clear com.example.android.system.runtimepermissions");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 return true;
         }
         return super.onOptionsItemSelected(item);
