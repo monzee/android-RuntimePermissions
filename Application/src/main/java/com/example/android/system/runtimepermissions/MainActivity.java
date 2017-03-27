@@ -81,8 +81,7 @@ import ph.codeia.androidutils.AndroidPermit;
  * <p>
  * (This class is based on the MainActivity used in the SimpleFragment sample template.)
  */
-public class MainActivity extends SampleActivityBase
-        implements ActivityCompat.OnRequestPermissionsResultCallback {
+public class MainActivity extends SampleActivityBase {
 
     public static final String TAG = "MainActivity";
 
@@ -108,19 +107,18 @@ public class MainActivity extends SampleActivityBase
         Log.i(TAG, "Show camera button pressed. Checking permission.");
         AndroidPermit.of(this)
                 .ask(Manifest.permission.CAMERA)
-                .denied(appeal -> {
-                    if (!appeal.isEmpty()) {
-                        Log.i(TAG,
-                                "Displaying camera permission rationale to provide additional context.");
-                        Snackbar.make(mLayout, R.string.permission_camera_rationale,
-                                Snackbar.LENGTH_INDEFINITE)
-                                .setAction(R.string.ok, _v -> appeal.submit())
-                                .show();
-                    } else {
-                        Log.i(TAG, "CAMERA permission was NOT granted.");
-                        Snackbar.make(mLayout, R.string.permissions_not_granted,
-                                Snackbar.LENGTH_SHORT).show();
-                    }
+                .before(appeal -> {
+                    Log.i(TAG,
+                            "Displaying camera permission rationale to provide additional context.");
+                    Snackbar.make(mLayout, R.string.permission_camera_rationale,
+                            Snackbar.LENGTH_INDEFINITE)
+                            .setAction(R.string.ok, _v -> appeal.submit())
+                            .show();
+                })
+                .after(response -> {
+                    Log.i(TAG, "CAMERA permission was NOT granted.");
+                    Snackbar.make(mLayout, R.string.permissions_not_granted,
+                            Snackbar.LENGTH_SHORT).show();
                 })
                 .granted(() -> {
                     Log.i(TAG,
@@ -139,20 +137,19 @@ public class MainActivity extends SampleActivityBase
 
         AndroidPermit.of(this)
                 .ask(PERMISSIONS_CONTACT)
-                .denied(appeal -> {
-                    if (!appeal.isEmpty()) {
-                        Log.i(TAG,
-                                "Displaying contacts permission rationale to provide additional context.");
-                        Snackbar.make(mLayout, R.string.permission_contacts_rationale,
-                                Snackbar.LENGTH_INDEFINITE)
-                                .setAction(R.string.ok, _v -> appeal.submit())
-                                .show();
-                    } else {
-                        Log.i(TAG, "Contacts permissions were NOT granted.");
-                        Snackbar.make(mLayout, R.string.permissions_not_granted,
-                                Snackbar.LENGTH_SHORT)
-                                .show();
-                    }
+                .before(appeal -> {
+                    Log.i(TAG,
+                            "Displaying contacts permission rationale to provide additional context.");
+                    Snackbar.make(mLayout, R.string.permission_contacts_rationale,
+                            Snackbar.LENGTH_INDEFINITE)
+                            .setAction(R.string.ok, _v -> appeal.submit())
+                            .show();
+                })
+                .after(response -> {
+                    Log.i(TAG, "Contacts permissions were NOT granted.");
+                    Snackbar.make(mLayout, R.string.permissions_not_granted,
+                            Snackbar.LENGTH_SHORT)
+                            .show();
                 })
                 .granted(() -> {
                     Log.i(TAG,

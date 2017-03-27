@@ -26,7 +26,7 @@ dependencies {
     compile "com.android.support:appcompat-v7:25.3.0"
     compile 'com.android.support:support-v4:25.3.0'
     compile 'com.android.support:design:25.3.0'
-    compile 'ph.codeia.vanilla:vanilla-android:0.3.2'
+    compile 'ph.codeia.vanilla:vanilla-android:0.3.3'
 }
 
 // The sample build uses multiple directories to
